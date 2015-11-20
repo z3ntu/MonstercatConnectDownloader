@@ -4,6 +4,7 @@ import sys
 import json
 import os
 import requests
+import re
 import urllib.request
 from PyQt5.QtWidgets import QApplication, QComboBox, QGridLayout, QWidget, QLabel, QFileDialog, QPushButton, \
     QMessageBox, QDialog, QLineEdit
@@ -79,6 +80,24 @@ def save_url(url, path, cj):
     output.write(r.read())
     output.close()
     print("Downloaded to " + path)
+
+
+def download_file(url, path, session):
+    # NOTE the stream=True parameter
+    r = session.get(url, stream=True)
+    filename = path + "/" + (str.replace(re.findall("filename=(.+)", r.headers['content-disposition'])[0], "\"", ""))
+    print(filename)
+    diff = (100/int(r.headers['Content-Length']))
+    count = 0
+    with open(filename, 'wb') as f:
+        for chunk in r.iter_content(chunk_size=1024):
+            if chunk:  # filter out keep-alive new chunks
+                # print("new chunk")
+                f.write(chunk)
+                print(count*1024*diff)
+                count += 1
+                # f.flush() commented by recommendation from J.F.Sebastian
+    return filename
 
 
 class Downloader(QWidget):
@@ -161,7 +180,7 @@ class Downloader(QWidget):
         # DOWNLOAD
         for album_id in album_ids:
             download_link = DOWNLOAD_BASE + album_id + "/download" + quality
-            save_url(download_link, save_dir + "/" + album_id + ".zip", self.session.cookies)
+            download_file(download_link, save_dir, self.session)
             break
 
         show_popup("Success!", "Download finished!")
