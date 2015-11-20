@@ -5,9 +5,9 @@ import json
 import os
 import requests
 import re
-import urllib.request
+import http.cookiejar
 from PyQt5.QtWidgets import QApplication, QComboBox, QGridLayout, QWidget, QLabel, QFileDialog, QPushButton, \
-    QMessageBox, QDialog, QLineEdit, QProgressDialog, QDesktopWidget
+    QMessageBox, QDialog, QLineEdit, QProgressDialog, QDesktopWidget, QCheckBox
 
 DOWNLOAD_FORMATS = dict(
         WAV="?format=wav",
@@ -26,6 +26,7 @@ class SignInDialog(QDialog):
     password = None
     session = None
     downloader = None
+    checkbox = None
 
     def __init__(self, downloader):
         super().__init__()
@@ -44,11 +45,14 @@ class SignInDialog(QDialog):
         login = QPushButton("Login")
         login.pressed.connect(self.login)
 
+        self.checkbox = QCheckBox("Stay signed in?")
+
         grid.addWidget(QLabel("E-Mail: "), *(1, 1))
         grid.addWidget(self.username, *(1, 2))
         grid.addWidget(QLabel("Password: "), *(2, 1))
         grid.addWidget(self.password, *(2, 2))
-        grid.addWidget(login, *(3, 2))
+        grid.addWidget(self.checkbox, *(3, 1))
+        grid.addWidget(login, *(4, 2))
 
     def login(self):
         print("Signing in...")
@@ -58,6 +62,8 @@ class SignInDialog(QDialog):
         if len(response) > 0:
             show_popup("Sign-In failed!", "Sign-In Error: " + response.get("message", "Unknown error"))
             return False
+        if self.checkbox.isChecked():
+            print("stay signed in")
         self.close()
         show_popup("Sign-In successful!", "You are successfully logged in!")
         self.downloader.loggedIn = True
@@ -92,7 +98,7 @@ def download_file(url, path, session):
             if chunk:  # filter out keep-alive new chunks
                 f.write(chunk)
                 percentvalue = round(count * chunksize * diff, 0)
-                print(percentvalue)
+                # print(percentvalue)
                 if percentvalue != lastvalue:
                     bar.setValue(percentvalue)
                     lastvalue = percentvalue
@@ -103,6 +109,20 @@ def download_file(url, path, session):
                 QApplication.processEvents()
     bar.close()
     return True
+
+
+def save_cookies(cj, filename):
+    print("Saving cookies")
+    cj.save(filename=filename)
+
+
+def load_cookies(filename):
+    print("Loading cookies")
+    cj = http.cookiejar.MozillaCookieJar()
+    if not os.path.isfile(filename):
+        return cj, False
+    cj.load(filename=filename)
+    return cj, True
 
 
 class Downloader(QWidget):
@@ -183,10 +203,10 @@ class Downloader(QWidget):
             show_popup("Error", "Login failed.")
             return
         length = str(len(album_ids))
-        bar = QProgressDialog("Downloading songs (0/" + length + ")", "Cancel", 0, int(length))
+        bar = QProgressDialog("Downloading songs (1/" + length + ")", "Cancel", 0, int(length))
         bar.setWindowTitle("Downloading songs")
         bar.setValue(0)
-        count = 0
+        count = 1
         # DOWNLOAD
         for album_id in album_ids:
             download_link = DOWNLOAD_BASE + album_id + "/download" + quality
@@ -194,6 +214,7 @@ class Downloader(QWidget):
             if not success:
                 show_popup("Cancelled", "Download was cancelled.")
                 break
+
             bar.setValue(count)
             bar.setLabelText("Downloading songs (" + str(count) + "/" + length + ")")
             count += 1
