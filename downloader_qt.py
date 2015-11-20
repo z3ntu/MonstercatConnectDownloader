@@ -7,7 +7,7 @@ import requests
 import re
 import urllib.request
 from PyQt5.QtWidgets import QApplication, QComboBox, QGridLayout, QWidget, QLabel, QFileDialog, QPushButton, \
-    QMessageBox, QDialog, QLineEdit
+    QMessageBox, QDialog, QLineEdit, QProgressDialog, QDesktopWidget
 
 DOWNLOAD_FORMATS = dict(
         WAV="?format=wav",
@@ -71,33 +71,38 @@ def show_popup(title, text):
     msgbox.exec_()
 
 
-def save_url(url, path, cj):
-    print("TELL THE DEV TO CHANGE THIS!!")
-    print("Downloading " + url)
-    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
-    r = opener.open(urllib.request.quote(url, safe="%/:=&?~#+!$,;'@()*[]"))
-    output = open(path, "wb")
-    output.write(r.read())
-    output.close()
-    print("Downloaded to " + path)
-
-
 def download_file(url, path, session):
-    # NOTE the stream=True parameter
-    r = session.get(url, stream=True)
-    filename = path + "/" + (str.replace(re.findall("filename=(.+)", r.headers['content-disposition'])[0], "\"", ""))
-    print(filename)
-    diff = (100/int(r.headers['Content-Length']))
     count = 0
-    with open(filename, 'wb') as f:
-        for chunk in r.iter_content(chunk_size=1024):
+    chunksize = 8192
+    lastvalue = 0
+
+    r = session.get(url, stream=True)
+    filename = str.replace(re.findall("filename=(.+)", r.headers['content-disposition'])[0], "\"", "")
+    fullpath = path + "/" + filename
+    print(fullpath)
+    diff = (100 / int(r.headers['Content-Length']))
+
+    # PROGRESS BAR
+    bar = QProgressDialog("Downloading <i>" + filename + "</i>", "Cancel", 0, 100)
+    bar.setWindowTitle("Downloading")
+    bar.setValue(0)
+
+    with open(fullpath, 'wb') as f:
+        for chunk in r.iter_content(chunk_size=chunksize):
             if chunk:  # filter out keep-alive new chunks
-                # print("new chunk")
                 f.write(chunk)
-                print(count*1024*diff)
+                percentvalue = round(count * chunksize * diff, 0)
+                print(percentvalue)
+                if percentvalue != lastvalue:
+                    bar.setValue(percentvalue)
+                    lastvalue = percentvalue
                 count += 1
-                # f.flush() commented by recommendation from J.F.Sebastian
-    return filename
+                if bar.wasCanceled():
+                    os.remove(fullpath)
+                    return False
+                QApplication.processEvents()
+    bar.close()
+    return True
 
 
 class Downloader(QWidget):
@@ -142,7 +147,8 @@ class Downloader(QWidget):
         self.grid.addWidget(QLabel(""), *(3, 1))
         self.grid.addWidget(download_button, *(4, 2))
 
-        self.move(300, 150)
+        # MOVE TO CENTER OF SCREEN
+        self.move(QDesktopWidget().availableGeometry().center() - self.frameGeometry().center())
         self.setWindowTitle('MonstercatConnectDownloader')
         self.show()
 
@@ -176,12 +182,26 @@ class Downloader(QWidget):
         if not self.loggedIn:
             show_popup("Error", "Login failed.")
             return
-
+        length = str(len(album_ids))
+        bar = QProgressDialog("Downloading songs (0/" + length + ")", "Cancel", 0, int(length))
+        bar.setWindowTitle("Downloading songs")
+        bar.setValue(0)
+        count = 0
         # DOWNLOAD
         for album_id in album_ids:
             download_link = DOWNLOAD_BASE + album_id + "/download" + quality
-            download_file(download_link, save_dir, self.session)
-            break
+            success = download_file(download_link, save_dir, self.session)
+            if not success:
+                show_popup("Cancelled", "Download was cancelled.")
+                break
+            bar.setValue(count)
+            bar.setLabelText("Downloading songs (" + str(count) + "/" + length + ")")
+            count += 1
+            if bar.wasCanceled():
+                show_popup("Cancelled", "Download was cancelled.")
+                break
+            QApplication.processEvents()
+            # break
 
         show_popup("Success!", "Download finished!")
 
