@@ -1,4 +1,0 @@
-connect = dict(
-    email="",
-    password=""
-)
