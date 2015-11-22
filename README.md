@@ -7,15 +7,22 @@ Currently uses a JSON file produces by [MonstercatConnectHelper](https://github.
 What you need:
 - Python 3
 - PyQt5
+- Python Requests
+Detailed instructions in the [Wiki](https://github.com/z3ntu/MonstercatConnectDownloader/wiki#detailed-instructions).
 
 How to run:
 `./downloader.py`
 - Choose the desired quality.
-- Select the JSON file.
+- Select the JSON file from MonstercatConnectHelper.
 - Select the destination folder.
 - Click `Download`
 - Enter your Monstercat Connect credentials.
 - Wait and enjoy the music! :blush:
 
 ## Screenshots
-<i>coming soon</i>
+_Main menu:_
+![Screenshot](http://i.imgur.com/4g2jzu9.png)
+_Login window:_
+![Screenshot](http://i.imgur.com/3pqQnnm.png)
+_Download progress:_
+![Screenshot](http://i.imgur.com/Ivnxf8w.png)
