@@ -18,8 +18,8 @@ DOWNLOAD_FORMATS = dict(
         FLAC="?format=flac"
 )
 SIGNIN_URL = "https://connect.monstercat.com/signin"
-DOWNLOAD_BASE = "https://connect.monstercat.com/album/"
-HOME_PATH = os.path.expanduser("~") + "/.monstercatconnectdownloader/"
+DOWNLOAD_BASE = "https://connect.monstercat.com/api/release/"
+HOME_PATH = os.path.expanduser("~") + "/.monstercatconnect/"
 COOKIE_FILE = HOME_PATH + "connect.cookies"
 
 
@@ -266,6 +266,7 @@ class Downloader(QWidget):
 
 
 if __name__ == '__main__':
+    os.makedirs(HOME_PATH, exist_ok=True)
     app = QApplication(sys.argv)
     dl = Downloader()
     sys.exit(app.exec_())
