@@ -85,6 +85,13 @@ def download_file(url, path, session):
     lastvalue = 0
 
     r = session.get(url, stream=True)
+    if r.status_code == 401:  # not logged in anymore
+        os.remove(COOKIE_FILE)
+        show_popup("ERROR", "Please restart the application and try again!")
+        sys.exit(1)
+    if r.status_code == 404:  # release not found, skip
+        show_popup("ERROR", "There was an error downloading the release with the url: " + url)
+        return True
     filename = str.replace(re.findall("filename=(.+)", r.headers['content-disposition'])[0], "\"", "")
     fullpath = path + "/" + filename
     print(fullpath)
@@ -127,7 +134,7 @@ def load_cookies(filename):
     return cj, True
 
 
-class Downloader(QWidget):
+class Downloader(QDialog):
     combobox = None
     grid = None
     selected_file = None
